@@ -97,11 +97,13 @@
 
         /* Map */
         #map { flex: 1; height: 100%; }
-        /* map-label class styling for tooltip */
+        /* map-label updated to support colored text and improved visibility */
         .map-label { 
-            font-weight: bold; color: #333; text-shadow: 1px 1px 0 #fff; 
-            border: 1px solid #ccc; background: rgba(255,255,255,0.9);
+            font-weight: bold; 
+            border: 1px solid #ccc; 
+            background: rgba(255,255,255,0.95);
             text-align: center;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
         }
         .category-group.drag-over { border: 2px dashed #3498db; }
     </style>
@@ -213,8 +215,6 @@
         let draggedItem = null;
         let draggedSourceCategory = null;
         let currentImportType = null;
-        
-        // Label Mode State: 'name', 'group', 'both', 'none'
         let currentLabelMode = 'name'; 
 
         // --- Init ---
@@ -238,15 +238,12 @@
             document.getElementById('sidebar').addEventListener('transitionend', function() { map.invalidateSize(); });
         }
 
-        // --- UI Logic ---
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('closed'); }
-
-        // --- Label Logic (New) ---
         function openLabelModal() { document.getElementById('label-modal').style.display = 'flex'; }
         
         function setLabelMode(mode) {
             currentLabelMode = mode;
-            updateMap(); // Re-render markers with new label setting
+            updateMap(); 
             closeModal('label-modal');
         }
 
@@ -272,7 +269,7 @@
             }
         }
 
-        // --- Imports/Exports/Modals ---
+        // --- Imports/Exports ---
         function openImportModal() { document.getElementById('import-modal').style.display = 'flex'; }
         function openExportModal() { document.getElementById('export-modal').style.display = 'flex'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
@@ -303,7 +300,7 @@
             reader.readAsText(file);
         }
 
-        // --- Parsers (Shortened for brevity but functionality same) ---
+        // --- Parsers ---
         function parseKML(xml) {
             const parser = new DOMParser(); const doc = parser.parseFromString(xml, "text/xml");
             const placemarks = doc.getElementsByTagName("Placemark");
@@ -445,7 +442,7 @@
             document.querySelectorAll('.location-item').forEach(li=>li.style.display=li.querySelector('.item-name').innerText.toLowerCase().includes(t)?'flex':'none');
         }
 
-        // --- Map Update with Dynamic Labels ---
+        // --- Map Update with Colored Text Logic ---
         function updateMap() {
             if(!map) return;
             markersLayer.clearLayers();
@@ -460,19 +457,18 @@
                     
                     layer.bindPopup(`<b>${item.name}</b><br>Status: ${CATEGORY_LABELS[key]}`);
                     
-                    // Dynamic Tooltip Logic
                     if (currentLabelMode !== 'none') {
                         let content = "";
-                        if (currentLabelMode === 'name') content = item.name;
-                        else if (currentLabelMode === 'group') content = CATEGORY_LABELS[key];
-                        else if (currentLabelMode === 'both') content = `${item.name}<br><small style='color:#666'>${CATEGORY_LABELS[key]}</small>`;
+                        // Apply inline style to match marker color
+                        if (currentLabelMode === 'name') content = `<span style="color:${color}">${item.name}</span>`;
+                        else if (currentLabelMode === 'group') content = `<span style="color:${color}">${CATEGORY_LABELS[key]}</span>`;
+                        else if (currentLabelMode === 'both') content = `<span style="color:${color}">${item.name}</span><br><small style="color:${color}">${CATEGORY_LABELS[key]}</small>`;
                         
                         layer.bindTooltip(content, { 
                             permanent: true, direction: 'top', className: 'map-label', 
                             offset: item.type === 'point' ? [0, -5] : [0, 0] 
                         });
                     }
-                    
                     markersLayer.addLayer(layer);
                 });
             });

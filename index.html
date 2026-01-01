@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Net House Projects Manager</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body, html { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; height: 100%; overflow: hidden; }
         
         /* Layout */
-        #app-container { display: flex; height: 100vh; }
+        #app-container { display: flex; height: 100vh; position: relative; }
         
         /* Sidebar */
         #sidebar {
@@ -18,8 +18,56 @@
             border-right: 1px solid #ccc;
             display: flex;
             flex-direction: column;
-            z-index: 1000;
+            z-index: 2000; /* High z-index to stay above map on mobile */
             box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease; /* Smooth animation */
+            position: relative;
+        }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            #sidebar {
+                position: absolute;
+                width: 100%; /* Full width on mobile */
+                height: 100%;
+            }
+            #sidebar.closed {
+                transform: translateX(-100%); /* Hide sidebar */
+            }
+        }
+
+        /* Map Toggle Button (Visible when sidebar is closed) */
+        #map-menu-btn {
+            position: absolute;
+            top: 10px;
+            left: 60px; /* Next to zoom controls */
+            z-index: 1000;
+            background: white;
+            border: 2px solid rgba(0,0,0,0.2);
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: none; /* Hidden on desktop by default */
+        }
+
+        /* Show menu button on mobile or when sidebar is closed */
+        @media (max-width: 768px) {
+            #map-menu-btn { display: block; }
+        }
+
+        /* Sidebar Close Button */
+        .btn-close-sidebar {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            display: none; /* Hidden on desktop */
+        }
+        @media (max-width: 768px) {
+            .btn-close-sidebar { display: block; }
         }
 
         /* Header Area */
@@ -38,14 +86,8 @@
         #search-input { width: 95%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 8px; }
         
         .btn-primary { background: #3498db; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-size: 13px; flex: 1; }
-        .btn-primary:hover { background: #2980b9; }
-        
         .btn-success { background: #27ae60; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-size: 13px; flex: 1; }
-        .btn-success:hover { background: #219150; }
-
-        .btn-toggle { background: #8e44ad; color: white; width: 100%; padding: 8px; border: none; border-radius: 4px; cursor: pointer; margin-top: 5px; transition: background 0.3s; }
-        .btn-toggle:hover { background: #732d91; }
-        
+        .btn-toggle { background: #8e44ad; color: white; width: 100%; padding: 8px; border: none; border-radius: 4px; cursor: pointer; margin-top: 5px; }
         .btn-danger { background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
 
         /* Category Lists */
@@ -61,7 +103,6 @@
             margin-bottom: 15px;
             border-radius: 6px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            overflow: visible;
             position: relative;
         }
 
@@ -79,174 +120,77 @@
             border-left: 5px solid transparent;
         }
         
-        .category-header:hover { background: #dee2e6; }
-        
         /* Color Picker Styles */
         .color-picker-trigger {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            border: 1px solid #999;
-            margin-right: 10px;
-            cursor: pointer;
-            display: inline-block;
+            width: 20px; height: 20px; border-radius: 4px; border: 1px solid #999; margin-right: 10px; cursor: pointer; display: inline-block;
         }
-        
         .color-dropdown {
-            position: absolute;
-            background: white;
-            border: 1px solid #ccc;
-            padding: 5px;
-            border-radius: 4px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            z-index: 99999;
-            display: none;
-            width: 130px;
-            flex-wrap: wrap;
-            gap: 5px;
+            position: absolute; background: white; border: 1px solid #ccc; padding: 5px; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 99999; display: none; width: 130px; flex-wrap: wrap; gap: 5px;
         }
         .color-dropdown.show { display: flex; }
         .color-option {
-            width: 25px;
-            height: 25px;
-            border-radius: 3px;
-            cursor: pointer;
-            border: 1px solid #ddd;
+            width: 25px; height: 25px; border-radius: 3px; cursor: pointer; border: 1px solid #ddd;
         }
-        .color-option:hover { transform: scale(1.1); border: 1px solid #333; }
 
         /* List Items */
-        .item-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            min-height: 10px;
-            transition: max-height 0.3s ease;
-        }
-        
+        .item-list { list-style: none; padding: 0; margin: 0; min-height: 10px; transition: max-height 0.3s ease; }
         .item-list.collapsed { display: none; }
-
-        /* Draggable Items */
         .location-item {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            background: white;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: grab;
-            transition: all 0.2s;
+            padding: 10px; border-bottom: 1px solid #eee; background: white; display: flex; align-items: center; gap: 10px; cursor: grab;
         }
-        .location-item:hover { background: #f8f9fa; }
-        .location-item.dragging { opacity: 0.5; background: #e3f2fd; border: 1px dashed #3498db; }
-
         .item-name { flex: 1; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
         /* Global Context Menu */
         #global-context-menu {
-            position: fixed;
-            background: white;
-            border: 1px solid #ccc;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            z-index: 100000;
-            width: 160px;
-            border-radius: 4px;
-            display: none;
-            flex-direction: column;
-            padding: 5px 0;
+            position: fixed; background: white; border: 1px solid #ccc; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 100000; width: 160px; border-radius: 4px; display: none; flex-direction: column; padding: 5px 0;
         }
-        
-        .menu-option {
-            padding: 10px 15px;
-            cursor: pointer;
-            font-size: 13px;
-            color: #333;
-            transition: background 0.1s;
-        }
-        .menu-option:hover { background: #f1f1f1; color: #000; }
+        .menu-option { padding: 10px 15px; cursor: pointer; font-size: 13px; color: #333; }
+        .menu-option:hover { background: #f1f1f1; }
+        .action-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: #6c757d; padding: 0 5px; }
 
-        .action-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
-            color: #6c757d;
-            padding: 0 5px;
-        }
-        .action-btn:hover { color: #333; }
-
-        /* Modal Styles (Shared for Import & Export) */
+        /* Modal Styles */
         .modal-overlay {
-            position: fixed;
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 200000;
-            display: none;
-            justify-content: center;
-            align-items: center;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200000; display: none; justify-content: center; align-items: center;
         }
         .modal-content {
-            background: white;
-            padding: 25px;
-            border-radius: 8px;
-            width: 320px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            text-align: center;
+            background: white; padding: 25px; border-radius: 8px; width: 320px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); text-align: center;
         }
-        .modal-btn {
-            display: block;
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.2s;
-        }
-        
-        /* Modal Button Colors */
+        .modal-btn { display: block; width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
         .btn-kml { background: #3498db; color: white; }
-        .btn-kml:hover { background: #2980b9; }
         .btn-geojson { background: #27ae60; color: white; }
-        .btn-geojson:hover { background: #219150; }
         .btn-json { background: #f39c12; color: white; }
-        .btn-json:hover { background: #d35400; }
         .btn-close { background: #95a5a6; color: white; margin-top: 15px; }
 
         /* Map */
         #map { flex: 1; height: 100%; }
-
-        /* Label Hiding Logic */
         .hide-labels .leaflet-tooltip { display: none !important; }
         .map-label { font-weight: bold; color: #333; text-shadow: 1px 1px 0 #fff; }
-
-        /* Drag Over Effect */
         .category-group.drag-over { border: 2px dashed #3498db; }
     </style>
 </head>
 <body>
 
 <div id="app-container">
+    
+    <button id="map-menu-btn" onclick="toggleSidebar()">☰ Menu</button>
+
     <aside id="sidebar">
         <div class="sidebar-header">
             <span>🛠️ Net House Projects</span>
-            <button class="btn-danger" onclick="clearData()">Clear History</button>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <button class="btn-danger" onclick="clearData()" title="Clear Data">🗑️</button>
+                <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
+            </div>
         </div>
         
         <div class="controls-area">
             <div class="file-input-wrapper">
                 <input type="file" id="file-input" style="display: none;">
-                
-                <button class="btn-primary" onclick="openImportModal()">📂 Import Data</button>
-                <button class="btn-success" onclick="openExportModal()">💾 Export Data</button>
+                <button class="btn-primary" onclick="openImportModal()">📂 Import</button>
+                <button class="btn-success" onclick="openExportModal()">💾 Export</button>
             </div>
             
             <input type="text" id="search-input" placeholder="🔍 Search locations..." oninput="filterItems()">
-            
             <button class="btn-toggle" id="toggle-labels-btn" onclick="toggleLabels()">👁️ Hide Labels</button>
         </div>
 
@@ -265,19 +209,9 @@
     <div class="modal-content">
         <h3 style="margin-top:0;">📤 Export Data</h3>
         <p>Choose format to save:</p>
-        
-        <button class="modal-btn btn-kml" onclick="exportData('kml')">
-            🌍 Export as KML <br><small>(Google Earth)</small>
-        </button>
-        
-        <button class="modal-btn btn-geojson" onclick="exportData('geojson')">
-            🗺️ Export as GeoJSON <br><small>(Web/GIS)</small>
-        </button>
-        
-        <button class="modal-btn btn-json" onclick="exportData('json')">
-            📦 Export as JSON <br><small>(Full Backup)</small>
-        </button>
-
+        <button class="modal-btn btn-kml" onclick="exportData('kml')">🌍 Export as KML <br><small>(Google Earth)</small></button>
+        <button class="modal-btn btn-geojson" onclick="exportData('geojson')">🗺️ Export as GeoJSON <br><small>(Web/GIS)</small></button>
+        <button class="modal-btn btn-json" onclick="exportData('json')">📦 Export as JSON <br><small>(Full Backup)</small></button>
         <button class="modal-btn btn-close" onclick="closeModal('export-modal')">Cancel</button>
     </div>
 </div>
@@ -286,19 +220,9 @@
     <div class="modal-content">
         <h3 style="margin-top:0;">📥 Import Data</h3>
         <p>Select format to upload:</p>
-        
-        <button class="modal-btn btn-kml" onclick="triggerImport('kml')">
-            🌍 Import KML <br><small>(From Google Earth)</small>
-        </button>
-        
-        <button class="modal-btn btn-geojson" onclick="triggerImport('geojson')">
-            🗺️ Import GeoJSON <br><small>(Standard GIS Format)</small>
-        </button>
-        
-        <button class="modal-btn btn-json" onclick="triggerImport('json')">
-            📦 Import JSON Backup <br><small>(Restore Project)</small>
-        </button>
-
+        <button class="modal-btn btn-kml" onclick="triggerImport('kml')">🌍 Import KML <br><small>(From Google Earth)</small></button>
+        <button class="modal-btn btn-geojson" onclick="triggerImport('geojson')">🗺️ Import GeoJSON <br><small>(Standard GIS Format)</small></button>
+        <button class="modal-btn btn-json" onclick="triggerImport('json')">📦 Import JSON Backup <br><small>(Restore Project)</small></button>
         <button class="modal-btn btn-close" onclick="closeModal('import-modal')">Cancel</button>
     </div>
 </div>
@@ -312,18 +236,14 @@
         'Selected': 'Selected', 'Ready': 'Ready for work', 'WIP': 'Work in progress', 'Finished': 'Finished', 'Other': 'Other'
     };
 
-    let categoryColors = {
-        'Selected': '#3498db', 'Ready': '#f1c40f', 'WIP': '#e67e22', 'Finished': '#27ae60', 'Other': '#7f8c8d'
-    };
-
+    let categoryColors = { 'Selected': '#3498db', 'Ready': '#f1c40f', 'WIP': '#e67e22', 'Finished': '#27ae60', 'Other': '#7f8c8d' };
     let appData = { 'Selected': [], 'Ready': [], 'WIP': [], 'Finished': [], 'Other': [] };
-
     let map;
     let markersLayer = new L.LayerGroup();
     let draggedItem = null;
     let draggedSourceCategory = null;
     let isLabelsVisible = true;
-    let currentImportType = null; // To track what user selected
+    let currentImportType = null;
 
     // --- Initialization ---
     window.onload = function() {
@@ -331,7 +251,7 @@
         loadFromStorage();
         renderSidebar();
         
-        // Event Listeners for closing stuff
+        // Event Listeners
         document.addEventListener('click', (e) => {
             if (document.getElementById('global-context-menu').style.display === 'flex' && !e.target.closest('.action-btn')) {
                 document.getElementById('global-context-menu').style.display = 'none';
@@ -344,7 +264,6 @@
             }
         });
 
-        // Main File Input Handler
         document.getElementById('file-input').addEventListener('change', handleFileSelect);
     };
 
@@ -352,6 +271,20 @@
         map = L.map('map').setView([22.2587, 71.1924], 8);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
         markersLayer.addTo(map);
+        
+        // Invalidate size when sidebar transition ends
+        document.getElementById('sidebar').addEventListener('transitionend', function() {
+            map.invalidateSize();
+        });
+    }
+
+    // --- UI Logic for Mobile Sidebar ---
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('closed');
+        
+        // If sidebar is closed, map should be full interaction
+        // If sidebar is open on mobile, it covers map
     }
 
     // --- Storage ---
@@ -378,65 +311,46 @@
     }
 
     // --- Import Logic ---
-    function openImportModal() {
-        document.getElementById('import-modal').style.display = 'flex';
-    }
-
-    function closeModal(id) {
-        document.getElementById(id).style.display = 'none';
-    }
+    function openImportModal() { document.getElementById('import-modal').style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
     function triggerImport(type) {
         currentImportType = type;
         const input = document.getElementById('file-input');
-        
         if(type === 'kml') input.accept = '.kml';
         else if(type === 'geojson') input.accept = '.geojson,.json';
         else if(type === 'json') input.accept = '.json';
-        
-        input.click(); // Open system dialog
+        input.click();
         closeModal('import-modal');
     }
 
     function handleFileSelect(e) {
         const file = e.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = function(e) {
             const content = e.target.result;
             try {
-                if (currentImportType === 'kml') {
-                    parseKML(content);
-                } else if (currentImportType === 'geojson') {
-                    parseGeoJSONImport(content);
-                } else if (currentImportType === 'json') {
-                    parseJSONBackup(content);
-                }
-            } catch (err) {
-                alert("Error importing file: " + err.message);
-            }
-            // Reset input so same file can be selected again if needed
+                if (currentImportType === 'kml') parseKML(content);
+                else if (currentImportType === 'geojson') parseGeoJSONImport(content);
+                else if (currentImportType === 'json') parseJSONBackup(content);
+            } catch (err) { alert("Error importing file: " + err.message); }
             document.getElementById('file-input').value = '';
         };
         reader.readAsText(file);
     }
 
-    // 1. KML Parser
     function parseKML(xmlText) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlText, "text/xml");
         const placemarks = xmlDoc.getElementsByTagName("Placemark");
         let newCount = 0;
-
         for (let i = 0; i < placemarks.length; i++) {
             const name = placemarks[i].getElementsByTagName("name")[0]?.textContent.trim() || "Unnamed";
             if (findItemByName(name)) continue;
-
             const point = placemarks[i].getElementsByTagName("Point")[0];
             const polygon = placemarks[i].getElementsByTagName("Polygon")[0];
             let type = 'unknown', latlng = null;
-
             if (point) {
                 type = 'point';
                 const coords = point.getElementsByTagName("coordinates")[0].textContent.trim().split(',');
@@ -449,225 +363,149 @@
                     if(parts.length >= 2) return [parseFloat(parts[1]), parseFloat(parts[0])];
                 }).filter(p => p);
             }
-
             if (latlng) {
                 appData['Selected'].push(createItem(name, type, latlng));
                 newCount++;
             }
         }
-        alert(`${newCount} locations imported from KML.`);
+        alert(`${newCount} locations imported.`);
         saveToStorage();
         renderSidebar();
     }
 
-    // 2. GeoJSON Parser
     function parseGeoJSONImport(jsonText) {
         const geoData = JSON.parse(jsonText);
         const features = geoData.features || (geoData.type === 'Feature' ? [geoData] : []);
         let newCount = 0;
-
         features.forEach(f => {
-            const name = f.properties?.name || "Unnamed GeoJSON";
+            const name = f.properties?.name || "Unnamed";
             if (findItemByName(name)) return;
-
             let type = 'unknown', latlng = null;
             if (f.geometry.type === 'Point') {
-                type = 'point';
-                // GeoJSON is [Lng, Lat], Leaflet is [Lat, Lng]
-                latlng = [f.geometry.coordinates[1], f.geometry.coordinates[0]]; 
+                type = 'point'; latlng = [f.geometry.coordinates[1], f.geometry.coordinates[0]];
             } else if (f.geometry.type === 'Polygon') {
-                type = 'polygon';
-                // Flatten array if needed (GeoJSON polygons are array of rings)
-                latlng = f.geometry.coordinates[0].map(c => [c[1], c[0]]);
+                type = 'polygon'; latlng = f.geometry.coordinates[0].map(c => [c[1], c[0]]);
             }
-
             if (latlng) {
-                // Try to respect existing status if present in properties, else 'Selected'
                 const status = f.properties.status && appData[f.properties.status] ? f.properties.status : 'Selected';
                 appData[status].push(createItem(name, type, latlng));
                 newCount++;
             }
         });
-        alert(`${newCount} locations imported from GeoJSON.`);
+        alert(`${newCount} locations imported.`);
         saveToStorage();
         renderSidebar();
     }
 
-    // 3. JSON Backup Parser
     function parseJSONBackup(jsonText) {
         const parsed = JSON.parse(jsonText);
         if (parsed.data && parsed.colors) {
-            if(confirm("This will replace current colors but append data. Continue?")) {
-                // Merge Data: Append new items only if not exist
+            if(confirm("Merge with current data?")) {
                 Object.keys(parsed.data).forEach(key => {
                     if(appData[key]) {
                         parsed.data[key].forEach(newItem => {
-                            if(!findItemByName(newItem.name)) {
-                                appData[key].push(newItem);
-                            }
+                            if(!findItemByName(newItem.name)) appData[key].push(newItem);
                         });
                     }
                 });
-                // Restore Colors
                 categoryColors = parsed.colors;
-                alert("Project data restored successfully.");
+                alert("Data restored.");
                 saveToStorage();
                 renderSidebar();
             }
-        } else {
-            alert("Invalid Backup File format.");
-        }
+        } else alert("Invalid Backup.");
     }
 
-    // Helper: Create standard item object
-    function createItem(name, type, latlng) {
-        return {
-            id: Date.now() + Math.random().toString(36).substr(2, 9),
-            name: name, type: type, latlng: latlng, visible: true
-        };
-    }
-
-    function findItemByName(name) {
-        return Object.keys(appData).some(key => appData[key].find(i => i.name === name));
-    }
+    function createItem(name, type, latlng) { return { id: Date.now() + Math.random().toString(36).substr(2, 9), name: name, type: type, latlng: latlng, visible: true }; }
+    function findItemByName(name) { return Object.keys(appData).some(key => appData[key].find(i => i.name === name)); }
 
     // --- Export Logic ---
-    function openExportModal() {
-        document.getElementById('export-modal').style.display = 'flex';
-    }
-
+    function openExportModal() { document.getElementById('export-modal').style.display = 'flex'; }
     function exportData(format) {
         try {
             let content = '', filename = 'nethouse_project.' + format, mimeType = 'text/plain';
-
-            if (format === 'json') {
-                content = JSON.stringify({ data: appData, colors: categoryColors }, null, 2);
-                mimeType = 'application/json';
-            } else if (format === 'geojson') {
-                content = generateGeoJSON();
-                mimeType = 'application/json';
-            } else if (format === 'kml') {
-                content = generateKML();
-                mimeType = 'application/vnd.google-earth.kml+xml';
-            }
-
+            if (format === 'json') { content = JSON.stringify({ data: appData, colors: categoryColors }, null, 2); mimeType = 'application/json'; }
+            else if (format === 'geojson') { content = generateGeoJSON(); mimeType = 'application/json'; }
+            else if (format === 'kml') { content = generateKML(); mimeType = 'application/vnd.google-earth.kml+xml'; }
             const blob = new Blob([content], { type: mimeType });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
             link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
             closeModal('export-modal');
-        } catch (e) {
-            alert('Error exporting: ' + e.message);
-        }
+        } catch (e) { alert('Error exporting: ' + e.message); }
     }
 
     function generateGeoJSON() {
         const features = [];
         CATEGORY_KEYS.forEach(key => {
             appData[key].forEach(item => {
-                let coords;
-                if(item.type === 'point') coords = [item.latlng[1], item.latlng[0]];
-                else coords = [item.latlng.map(p => [p[1], p[0]])];
-                features.push({
-                    type: "Feature",
-                    properties: { name: item.name, status: key, color: categoryColors[key] },
-                    geometry: { type: item.type === 'point' ? "Point" : "Polygon", coordinates: coords }
-                });
+                let coords = item.type === 'point' ? [item.latlng[1], item.latlng[0]] : [item.latlng.map(p => [p[1], p[0]])];
+                features.push({ type: "Feature", properties: { name: item.name, status: key, color: categoryColors[key] }, geometry: { type: item.type === 'point' ? "Point" : "Polygon", coordinates: coords } });
             });
         });
         return JSON.stringify({ type: "FeatureCollection", features: features }, null, 2);
     }
 
     function generateKML() {
-        const hexToKml = (hex) => {
-            const r = hex.substring(1,3), g = hex.substring(3,5), b = hex.substring(5,7);
-            return `ff${b}${g}${r}`;
-        };
+        const hexToKml = (hex) => { const r = hex.substring(1,3), g = hex.substring(3,5), b = hex.substring(5,7); return `ff${b}${g}${r}`; };
         let styles = '', placemarks = '';
-        
         CATEGORY_KEYS.forEach(key => {
             const kmlColor = hexToKml(categoryColors[key]);
             styles += `<Style id="style-${key}"><IconStyle><scale>1.1</scale><color>${kmlColor}</color></IconStyle><LineStyle><color>${kmlColor}</color><width>2</width></LineStyle><PolyStyle><color>7f${kmlColor.substring(2)}</color></PolyStyle></Style>`;
-            
             appData[key].forEach(item => {
-                let geom = item.type === 'point' ? 
-                    `<Point><coordinates>${item.latlng[1]},${item.latlng[0]},0</coordinates></Point>` :
-                    `<Polygon><outerBoundaryIs><LinearRing><coordinates>${item.latlng.map(p => `${p[1]},${p[0]},0`).join(' ')}</coordinates></LinearRing></outerBoundaryIs></Polygon>`;
+                let geom = item.type === 'point' ? `<Point><coordinates>${item.latlng[1]},${item.latlng[0]},0</coordinates></Point>` : `<Polygon><outerBoundaryIs><LinearRing><coordinates>${item.latlng.map(p => `${p[1]},${p[0]},0`).join(' ')}</coordinates></LinearRing></outerBoundaryIs></Polygon>`;
                 placemarks += `<Placemark><name>${item.name}</name><styleUrl>#style-${key}</styleUrl>${geom}</Placemark>`;
             });
         });
-
         return `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Net House Projects</name>${styles}${placemarks}</Document></kml>`;
     }
 
-    // --- Sidebar & Map Logic (Standard) ---
+    // --- Sidebar & Map Logic ---
     function renderSidebar() {
         const container = document.getElementById('categories-container');
         container.innerHTML = '';
-
         CATEGORY_KEYS.forEach(key => {
             const currentColor = categoryColors[key];
             const groupDiv = document.createElement('div');
             groupDiv.className = `category-group`;
-            
             const isAllChecked = appData[key].length > 0 && appData[key].every(i => i.visible);
             
             const header = document.createElement('div');
             header.className = 'category-header';
             header.style.borderLeftColor = currentColor;
-            header.innerHTML = `
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <div class="color-picker-trigger" style="background:${currentColor}" onclick="openColorPicker(event, '${key}')"></div>
-                    <input type="checkbox" ${isAllChecked ? 'checked' : ''} onclick="toggleCategory('${key}', this.checked, event)">
-                    <span onclick="toggleCollapse('${key}')">${CATEGORY_LABELS[key]} (${appData[key].length})</span>
-                </div>
-                <span onclick="toggleCollapse('${key}')">▼</span>
-            `;
+            header.innerHTML = `<div style="display:flex; align-items:center; gap:8px;"><div class="color-picker-trigger" style="background:${currentColor}" onclick="openColorPicker(event, '${key}')"></div><input type="checkbox" ${isAllChecked ? 'checked' : ''} onclick="toggleCategory('${key}', this.checked, event)"><span onclick="toggleCollapse('${key}')">${CATEGORY_LABELS[key]} (${appData[key].length})</span></div><span onclick="toggleCollapse('${key}')">▼</span>`;
 
             const ul = document.createElement('ul');
-            ul.className = 'item-list';
-            ul.id = `list-${key}`;
+            ul.className = 'item-list'; ul.id = `list-${key}`;
             ul.addEventListener('dragover', e => { e.preventDefault(); ul.parentElement.classList.add('drag-over'); });
             ul.addEventListener('dragleave', e => { ul.parentElement.classList.remove('drag-over'); });
             ul.addEventListener('drop', e => { e.preventDefault(); ul.parentElement.classList.remove('drag-over'); handleDrop(key); });
 
             appData[key].forEach((item, index) => {
                 const li = document.createElement('li');
-                li.className = 'location-item';
-                li.draggable = true;
+                li.className = 'location-item'; li.draggable = true;
                 li.addEventListener('dragstart', (e) => { draggedItem = item; draggedSourceCategory = key; li.classList.add('dragging'); });
                 li.addEventListener('dragend', () => { li.classList.remove('dragging'); draggedItem = null; draggedSourceCategory = null; });
-                li.innerHTML = `
-                    <input type="checkbox" ${item.visible ? 'checked' : ''} onchange="toggleItem('${key}', ${index})">
-                    <span class="item-name" onclick="zoomToItem('${key}', ${index})">${item.name}</span>
-                    <button class="action-btn" onclick="openGlobalMenu(event, '${key}', ${index})">⋮</button>
-                `;
+                li.innerHTML = `<input type="checkbox" ${item.visible ? 'checked' : ''} onchange="toggleItem('${key}', ${index})"><span class="item-name" onclick="zoomToItem('${key}', ${index}); if(window.innerWidth <= 768) toggleSidebar();">${item.name}</span><button class="action-btn" onclick="openGlobalMenu(event, '${key}', ${index})">⋮</button>`;
                 ul.appendChild(li);
             });
-            groupDiv.appendChild(header);
-            groupDiv.appendChild(ul);
-            container.appendChild(groupDiv);
+            groupDiv.appendChild(header); groupDiv.appendChild(ul); container.appendChild(groupDiv);
         });
     }
 
-    // Helpers
     function openColorPicker(event, catKey) {
         event.stopPropagation();
         const picker = document.getElementById('global-color-picker');
         picker.innerHTML = '';
         AVAILABLE_COLORS.forEach(color => {
             const div = document.createElement('div');
-            div.className = 'color-option';
-            div.style.backgroundColor = color;
+            div.className = 'color-option'; div.style.backgroundColor = color;
             div.onclick = () => { categoryColors[catKey] = color; picker.classList.remove('show'); saveToStorage(); renderSidebar(); };
             picker.appendChild(div);
         });
         const rect = event.target.getBoundingClientRect();
-        picker.style.top = (rect.bottom + 5) + 'px';
-        picker.style.left = rect.left + 'px';
+        picker.style.top = (rect.bottom + 5) + 'px'; picker.style.left = rect.left + 'px';
         picker.classList.add('show');
     }
 
@@ -678,8 +516,7 @@
         CATEGORY_KEYS.forEach(targetCat => {
             if (targetCat !== sourceCat) {
                 const opt = document.createElement('div');
-                opt.className = 'menu-option';
-                opt.innerText = `Move to ${CATEGORY_LABELS[targetCat]}`;
+                opt.className = 'menu-option'; opt.innerText = `Move to ${CATEGORY_LABELS[targetCat]}`;
                 opt.onclick = () => { moveItem(sourceCat, index, targetCat); menu.style.display = 'none'; };
                 menu.appendChild(opt);
             }
@@ -694,10 +531,8 @@
 
     function moveItem(sourceCat, index, targetCat) {
         const item = appData[sourceCat][index];
-        appData[sourceCat].splice(index, 1);
-        appData[targetCat].push(item);
-        saveToStorage();
-        renderSidebar();
+        appData[sourceCat].splice(index, 1); appData[targetCat].push(item);
+        saveToStorage(); renderSidebar();
     }
 
     function toggleCollapse(catKey) { document.getElementById(`list-${catKey}`).classList.toggle('collapsed'); }
@@ -723,8 +558,7 @@
         if (!draggedItem || !draggedSourceCategory || draggedSourceCategory === targetCategory) return;
         appData[draggedSourceCategory] = appData[draggedSourceCategory].filter(i => i.id !== draggedItem.id);
         appData[targetCategory].push(draggedItem);
-        saveToStorage();
-        renderSidebar();
+        saveToStorage(); renderSidebar();
     }
 
     function filterItems() {

@@ -8,8 +8,30 @@
     <style>
         body, html { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; height: 100%; overflow: hidden; }
         
-        /* Layout */
-        #app-container { display: flex; height: 100vh; position: relative; }
+        /* --- Login Screen Styles --- */
+        #login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #2c3e50, #4ca1af);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 99999; /* Highest Z-Index */
+        }
+        .login-box {
+            background: white; padding: 40px; border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center; width: 300px;
+        }
+        .login-input {
+            width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #ddd;
+            border-radius: 5px; box-sizing: border-box; font-size: 16px; text-align: center;
+        }
+        .login-btn {
+            width: 100%; padding: 12px; background: #3498db; color: white;
+            border: none; border-radius: 5px; font-size: 16px; cursor: pointer; transition: background 0.3s;
+        }
+        .login-btn:hover { background: #2980b9; }
+        .error-msg { color: #e74c3c; font-size: 14px; margin-top: 10px; display: none; }
+
+        /* --- Main App Layout (Hidden Initially) --- */
+        #app-container { display: none; height: 100vh; position: relative; } /* Hidden by default */
         
         /* Sidebar */
         #sidebar {
@@ -18,143 +40,80 @@
             border-right: 1px solid #ccc;
             display: flex;
             flex-direction: column;
-            z-index: 2000; /* High z-index to stay above map on mobile */
+            z-index: 2000;
             box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease; /* Smooth animation */
+            transition: transform 0.3s ease;
             position: relative;
         }
 
         /* Mobile Responsive Styles */
         @media (max-width: 768px) {
-            #sidebar {
-                position: absolute;
-                width: 100%; /* Full width on mobile */
-                height: 100%;
-            }
-            #sidebar.closed {
-                transform: translateX(-100%); /* Hide sidebar */
-            }
+            #sidebar { position: absolute; width: 100%; height: 100%; }
+            #sidebar.closed { transform: translateX(-100%); }
         }
 
-        /* Map Toggle Button (Visible when sidebar is closed) */
+        /* Map Toggle Button */
         #map-menu-btn {
-            position: absolute;
-            top: 10px;
-            left: 60px; /* Next to zoom controls */
-            z-index: 1000;
-            background: white;
-            border: 2px solid rgba(0,0,0,0.2);
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            display: none; /* Hidden on desktop by default */
+            position: absolute; top: 10px; left: 60px; z-index: 1000;
+            background: white; border: 2px solid rgba(0,0,0,0.2);
+            padding: 8px 12px; border-radius: 4px; cursor: pointer;
+            font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: none;
         }
-
-        /* Show menu button on mobile or when sidebar is closed */
-        @media (max-width: 768px) {
-            #map-menu-btn { display: block; }
-        }
+        @media (max-width: 768px) { #map-menu-btn { display: block; } }
 
         /* Sidebar Close Button */
         .btn-close-sidebar {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            display: none; /* Hidden on desktop */
+            background: none; border: none; color: white; font-size: 20px;
+            cursor: pointer; display: none;
         }
-        @media (max-width: 768px) {
-            .btn-close-sidebar { display: block; }
-        }
+        @media (max-width: 768px) { .btn-close-sidebar { display: block; } }
 
         /* Header Area */
         .sidebar-header {
-            padding: 15px;
-            background: #2c3e50;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            padding: 15px; background: #2c3e50; color: white;
+            display: flex; justify-content: space-between; align-items: center;
         }
         .controls-area { padding: 10px; background: white; border-bottom: 1px solid #ddd; }
         .file-input-wrapper { display: flex; gap: 10px; margin-bottom: 10px; }
         
         /* Inputs & Buttons */
         #search-input { width: 95%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 8px; }
-        
         .btn-primary { background: #3498db; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-size: 13px; flex: 1; }
         .btn-success { background: #27ae60; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-size: 13px; flex: 1; }
         .btn-toggle { background: #8e44ad; color: white; width: 100%; padding: 8px; border: none; border-radius: 4px; cursor: pointer; margin-top: 5px; }
         .btn-danger { background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
 
         /* Category Lists */
-        #categories-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px;
-            padding-bottom: 50px;
-        }
-
-        .category-group {
-            background: white;
-            margin-bottom: 15px;
-            border-radius: 6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            position: relative;
-        }
-
+        #categories-container { flex: 1; overflow-y: auto; padding: 10px; padding-bottom: 50px; }
+        .category-group { background: white; margin-bottom: 15px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: relative; }
         .category-header {
-            padding: 10px;
-            background: #e9ecef;
-            border-bottom: 1px solid #dee2e6;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            cursor: pointer;
-            user-select: none;
-            font-weight: bold;
-            color: #495057;
-            border-left: 5px solid transparent;
+            padding: 10px; background: #e9ecef; border-bottom: 1px solid #dee2e6;
+            display: flex; align-items: center; justify-content: space-between;
+            cursor: pointer; user-select: none; font-weight: bold; color: #495057; border-left: 5px solid transparent;
         }
         
         /* Color Picker Styles */
-        .color-picker-trigger {
-            width: 20px; height: 20px; border-radius: 4px; border: 1px solid #999; margin-right: 10px; cursor: pointer; display: inline-block;
-        }
-        .color-dropdown {
-            position: absolute; background: white; border: 1px solid #ccc; padding: 5px; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 99999; display: none; width: 130px; flex-wrap: wrap; gap: 5px;
-        }
+        .color-picker-trigger { width: 20px; height: 20px; border-radius: 4px; border: 1px solid #999; margin-right: 10px; cursor: pointer; display: inline-block; }
+        .color-dropdown { position: absolute; background: white; border: 1px solid #ccc; padding: 5px; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 99999; display: none; width: 130px; flex-wrap: wrap; gap: 5px; }
         .color-dropdown.show { display: flex; }
-        .color-option {
-            width: 25px; height: 25px; border-radius: 3px; cursor: pointer; border: 1px solid #ddd;
-        }
+        .color-option { width: 25px; height: 25px; border-radius: 3px; cursor: pointer; border: 1px solid #ddd; }
 
         /* List Items */
         .item-list { list-style: none; padding: 0; margin: 0; min-height: 10px; transition: max-height 0.3s ease; }
         .item-list.collapsed { display: none; }
-        .location-item {
-            padding: 10px; border-bottom: 1px solid #eee; background: white; display: flex; align-items: center; gap: 10px; cursor: grab;
-        }
+        .location-item { padding: 10px; border-bottom: 1px solid #eee; background: white; display: flex; align-items: center; gap: 10px; cursor: grab; }
         .item-name { flex: 1; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
         /* Global Context Menu */
-        #global-context-menu {
-            position: fixed; background: white; border: 1px solid #ccc; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 100000; width: 160px; border-radius: 4px; display: none; flex-direction: column; padding: 5px 0;
-        }
+        #global-context-menu { position: fixed; background: white; border: 1px solid #ccc; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 100000; width: 160px; border-radius: 4px; display: none; flex-direction: column; padding: 5px 0; }
         .menu-option { padding: 10px 15px; cursor: pointer; font-size: 13px; color: #333; }
         .menu-option:hover { background: #f1f1f1; }
         .action-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: #6c757d; padding: 0 5px; }
 
         /* Modal Styles */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200000; display: none; justify-content: center; align-items: center;
-        }
-        .modal-content {
-            background: white; padding: 25px; border-radius: 8px; width: 320px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); text-align: center;
-        }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200000; display: none; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 320px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); text-align: center; }
         .modal-btn { display: block; width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
         .btn-kml { background: #3498db; color: white; }
         .btn-geojson { background: #27ae60; color: white; }
@@ -170,417 +129,436 @@
 </head>
 <body>
 
-<div id="app-container">
-    
-    <button id="map-menu-btn" onclick="toggleSidebar()">☰ Menu</button>
-
-    <aside id="sidebar">
-        <div class="sidebar-header">
-            <span>🛠️ Net House Projects</span>
-            <div style="display:flex; gap:10px; align-items:center;">
-                <button class="btn-danger" onclick="clearData()" title="Clear Data">🗑️</button>
-                <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
-            </div>
+    <div id="login-screen">
+        <div class="login-box">
+            <h2 style="color:#2c3e50; margin-top:0;">🔐 Login Required</h2>
+            <p style="color:#666; font-size:14px;">Enter password to access project</p>
+            <input type="password" id="password-input" class="login-input" placeholder="Password">
+            <button class="login-btn" onclick="checkLogin()">Unlock</button>
+            <div id="login-error" class="error-msg">❌ Incorrect Password</div>
         </div>
-        
-        <div class="controls-area">
-            <div class="file-input-wrapper">
-                <input type="file" id="file-input" style="display: none;">
-                <button class="btn-primary" onclick="openImportModal()">📂 Import</button>
-                <button class="btn-success" onclick="openExportModal()">💾 Export</button>
+    </div>
+
+    <div id="app-container">
+        <button id="map-menu-btn" onclick="toggleSidebar()">☰ Menu</button>
+
+        <aside id="sidebar">
+            <div class="sidebar-header">
+                <span>🛠️ Net House Projects</span>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button class="btn-danger" onclick="clearData()" title="Clear Data">🗑️</button>
+                    <button class="btn-close-sidebar" onclick="toggleSidebar()">✕</button>
+                </div>
             </div>
             
-            <input type="text" id="search-input" placeholder="🔍 Search locations..." oninput="filterItems()">
-            <button class="btn-toggle" id="toggle-labels-btn" onclick="toggleLabels()">👁️ Hide Labels</button>
-        </div>
-
-        <div id="categories-container">
+            <div class="controls-area">
+                <div class="file-input-wrapper">
+                    <input type="file" id="file-input" style="display: none;">
+                    <button class="btn-primary" onclick="openImportModal()">📂 Import</button>
+                    <button class="btn-success" onclick="openExportModal()">💾 Export</button>
+                </div>
+                
+                <input type="text" id="search-input" placeholder="🔍 Search locations..." oninput="filterItems()">
+                <button class="btn-toggle" id="toggle-labels-btn" onclick="toggleLabels()">👁️ Hide Labels</button>
             </div>
-    </aside>
 
-    <main id="map"></main>
-</div>
+            <div id="categories-container"></div>
+        </aside>
 
-<div id="global-context-menu"></div>
-
-<div id="global-color-picker" class="color-dropdown"></div>
-
-<div id="export-modal" class="modal-overlay">
-    <div class="modal-content">
-        <h3 style="margin-top:0;">📤 Export Data</h3>
-        <p>Choose format to save:</p>
-        <button class="modal-btn btn-kml" onclick="exportData('kml')">🌍 Export as KML <br><small>(Google Earth)</small></button>
-        <button class="modal-btn btn-geojson" onclick="exportData('geojson')">🗺️ Export as GeoJSON <br><small>(Web/GIS)</small></button>
-        <button class="modal-btn btn-json" onclick="exportData('json')">📦 Export as JSON <br><small>(Full Backup)</small></button>
-        <button class="modal-btn btn-close" onclick="closeModal('export-modal')">Cancel</button>
+        <main id="map"></main>
     </div>
-</div>
 
-<div id="import-modal" class="modal-overlay">
-    <div class="modal-content">
-        <h3 style="margin-top:0;">📥 Import Data</h3>
-        <p>Select format to upload:</p>
-        <button class="modal-btn btn-kml" onclick="triggerImport('kml')">🌍 Import KML <br><small>(From Google Earth)</small></button>
-        <button class="modal-btn btn-geojson" onclick="triggerImport('geojson')">🗺️ Import GeoJSON <br><small>(Standard GIS Format)</small></button>
-        <button class="modal-btn btn-json" onclick="triggerImport('json')">📦 Import JSON Backup <br><small>(Restore Project)</small></button>
-        <button class="modal-btn btn-close" onclick="closeModal('import-modal')">Cancel</button>
+    <div id="global-context-menu"></div>
+    <div id="global-color-picker" class="color-dropdown"></div>
+
+    <div id="export-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="margin-top:0;">📤 Export Data</h3>
+            <p>Choose format to save:</p>
+            <button class="modal-btn btn-kml" onclick="exportData('kml')">🌍 Export as KML <br><small>(Google Earth)</small></button>
+            <button class="modal-btn btn-geojson" onclick="exportData('geojson')">🗺️ Export as GeoJSON <br><small>(Web/GIS)</small></button>
+            <button class="modal-btn btn-json" onclick="exportData('json')">📦 Export as JSON <br><small>(Full Backup)</small></button>
+            <button class="modal-btn btn-close" onclick="closeModal('export-modal')">Cancel</button>
+        </div>
     </div>
-</div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    // --- Data Configuration ---
-    const AVAILABLE_COLORS = ['#3498db', '#e74c3c', '#27ae60', '#f1c40f', '#e67e22', '#9b59b6', '#1abc9c', '#7f8c8d'];
-    const CATEGORY_KEYS = ['Selected', 'Ready', 'WIP', 'Finished', 'Other'];
-    const CATEGORY_LABELS = {
-        'Selected': 'Selected', 'Ready': 'Ready for work', 'WIP': 'Work in progress', 'Finished': 'Finished', 'Other': 'Other'
-    };
+    <div id="import-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="margin-top:0;">📥 Import Data</h3>
+            <p>Select format to upload:</p>
+            <button class="modal-btn btn-kml" onclick="triggerImport('kml')">🌍 Import KML <br><small>(From Google Earth)</small></button>
+            <button class="modal-btn btn-geojson" onclick="triggerImport('geojson')">🗺️ Import GeoJSON <br><small>(Standard GIS Format)</small></button>
+            <button class="modal-btn btn-json" onclick="triggerImport('json')">📦 Import JSON Backup <br><small>(Restore Project)</small></button>
+            <button class="modal-btn btn-close" onclick="closeModal('import-modal')">Cancel</button>
+        </div>
+    </div>
 
-    let categoryColors = { 'Selected': '#3498db', 'Ready': '#f1c40f', 'WIP': '#e67e22', 'Finished': '#27ae60', 'Other': '#7f8c8d' };
-    let appData = { 'Selected': [], 'Ready': [], 'WIP': [], 'Finished': [], 'Other': [] };
-    let map;
-    let markersLayer = new L.LayerGroup();
-    let draggedItem = null;
-    let draggedSourceCategory = null;
-    let isLabelsVisible = true;
-    let currentImportType = null;
-
-    // --- Initialization ---
-    window.onload = function() {
-        initMap();
-        loadFromStorage();
-        renderSidebar();
-        
-        // Event Listeners
-        document.addEventListener('click', (e) => {
-            if (document.getElementById('global-context-menu').style.display === 'flex' && !e.target.closest('.action-btn')) {
-                document.getElementById('global-context-menu').style.display = 'none';
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // --- Login Logic ---
+        function checkLogin() {
+            const pass = document.getElementById('password-input').value;
+            const errorMsg = document.getElementById('login-error');
+            
+            if (pass === "932927") {
+                // Success
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('app-container').style.display = 'flex';
+                
+                // Initialize app only after login to render map correctly
+                initApp();
+            } else {
+                // Fail
+                errorMsg.style.display = 'block';
+                document.getElementById('password-input').value = '';
             }
-            if (document.getElementById('global-color-picker').classList.contains('show') && !e.target.closest('.color-picker-trigger')) {
-                document.getElementById('global-color-picker').classList.remove('show');
-            }
-            if(e.target.classList.contains('modal-overlay')) {
-                e.target.style.display = 'none';
-            }
-        });
-
-        document.getElementById('file-input').addEventListener('change', handleFileSelect);
-    };
-
-    function initMap() {
-        map = L.map('map').setView([22.2587, 71.1924], 8);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
-        markersLayer.addTo(map);
-        
-        // Invalidate size when sidebar transition ends
-        document.getElementById('sidebar').addEventListener('transitionend', function() {
-            map.invalidateSize();
-        });
-    }
-
-    // --- UI Logic for Mobile Sidebar ---
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        sidebar.classList.toggle('closed');
-        
-        // If sidebar is closed, map should be full interaction
-        // If sidebar is open on mobile, it covers map
-    }
-
-    // --- Storage ---
-    function saveToStorage() {
-        localStorage.setItem('kmlMapDataNetHouse', JSON.stringify(appData));
-        localStorage.setItem('kmlMapColorsNetHouse', JSON.stringify(categoryColors));
-        updateMap();
-    }
-
-    function loadFromStorage() {
-        const savedData = localStorage.getItem('kmlMapDataNetHouse');
-        const savedColors = localStorage.getItem('kmlMapColorsNetHouse');
-        if (savedData) appData = JSON.parse(savedData);
-        if (savedColors) categoryColors = JSON.parse(savedColors);
-        updateMap();
-    }
-
-    function clearData() {
-        if(confirm("Are you sure? This will delete all saved progress.")) {
-            localStorage.removeItem('kmlMapDataNetHouse');
-            localStorage.removeItem('kmlMapColorsNetHouse');
-            location.reload();
         }
-    }
 
-    // --- Import Logic ---
-    function openImportModal() { document.getElementById('import-modal').style.display = 'flex'; }
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        // Allow 'Enter' key to submit password
+        document.getElementById('password-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') checkLogin();
+        });
 
-    function triggerImport(type) {
-        currentImportType = type;
-        const input = document.getElementById('file-input');
-        if(type === 'kml') input.accept = '.kml';
-        else if(type === 'geojson') input.accept = '.geojson,.json';
-        else if(type === 'json') input.accept = '.json';
-        input.click();
-        closeModal('import-modal');
-    }
+        // --- Standard App Variables ---
+        const AVAILABLE_COLORS = ['#3498db', '#e74c3c', '#27ae60', '#f1c40f', '#e67e22', '#9b59b6', '#1abc9c', '#7f8c8d'];
+        const CATEGORY_KEYS = ['Selected', 'Ready', 'WIP', 'Finished', 'Other'];
+        const CATEGORY_LABELS = { 'Selected': 'Selected', 'Ready': 'Ready for work', 'WIP': 'Work in progress', 'Finished': 'Finished', 'Other': 'Other' };
+        let categoryColors = { 'Selected': '#3498db', 'Ready': '#f1c40f', 'WIP': '#e67e22', 'Finished': '#27ae60', 'Other': '#7f8c8d' };
+        let appData = { 'Selected': [], 'Ready': [], 'WIP': [], 'Finished': [], 'Other': [] };
+        let map;
+        let markersLayer = new L.LayerGroup();
+        let draggedItem = null;
+        let draggedSourceCategory = null;
+        let isLabelsVisible = true;
+        let currentImportType = null;
 
-    function handleFileSelect(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const content = e.target.result;
+        // --- App Initialization (Called after Login) ---
+        function initApp() {
+            initMap();
+            loadFromStorage();
+            renderSidebar();
+            
+            // Event Listeners
+            document.addEventListener('click', (e) => {
+                if (document.getElementById('global-context-menu').style.display === 'flex' && !e.target.closest('.action-btn')) {
+                    document.getElementById('global-context-menu').style.display = 'none';
+                }
+                if (document.getElementById('global-color-picker').classList.contains('show') && !e.target.closest('.color-picker-trigger')) {
+                    document.getElementById('global-color-picker').classList.remove('show');
+                }
+                if(e.target.classList.contains('modal-overlay')) {
+                    e.target.style.display = 'none';
+                }
+            });
+
+            document.getElementById('file-input').addEventListener('change', handleFileSelect);
+        }
+
+        function initMap() {
+            map = L.map('map').setView([22.2587, 71.1924], 8);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
+            markersLayer.addTo(map);
+            
+            document.getElementById('sidebar').addEventListener('transitionend', function() {
+                map.invalidateSize();
+            });
+        }
+
+        // --- UI Logic ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('closed');
+        }
+
+        // --- Storage ---
+        function saveToStorage() {
+            localStorage.setItem('kmlMapDataNetHouse', JSON.stringify(appData));
+            localStorage.setItem('kmlMapColorsNetHouse', JSON.stringify(categoryColors));
+            updateMap();
+        }
+
+        function loadFromStorage() {
+            const savedData = localStorage.getItem('kmlMapDataNetHouse');
+            const savedColors = localStorage.getItem('kmlMapColorsNetHouse');
+            if (savedData) appData = JSON.parse(savedData);
+            if (savedColors) categoryColors = JSON.parse(savedColors);
+            // Don't call updateMap here directly as map might not be initialized yet if not logged in
+        }
+
+        function clearData() {
+            if(confirm("Are you sure? This will delete all saved progress.")) {
+                localStorage.removeItem('kmlMapDataNetHouse');
+                localStorage.removeItem('kmlMapColorsNetHouse');
+                location.reload();
+            }
+        }
+
+        // --- Import Logic ---
+        function openImportModal() { document.getElementById('import-modal').style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        function triggerImport(type) {
+            currentImportType = type;
+            const input = document.getElementById('file-input');
+            if(type === 'kml') input.accept = '.kml';
+            else if(type === 'geojson') input.accept = '.geojson,.json';
+            else if(type === 'json') input.accept = '.json';
+            input.click();
+            closeModal('import-modal');
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                try {
+                    if (currentImportType === 'kml') parseKML(content);
+                    else if (currentImportType === 'geojson') parseGeoJSONImport(content);
+                    else if (currentImportType === 'json') parseJSONBackup(content);
+                } catch (err) { alert("Error importing file: " + err.message); }
+                document.getElementById('file-input').value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // --- Parsing Functions ---
+        function parseKML(xmlText) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+            const placemarks = xmlDoc.getElementsByTagName("Placemark");
+            let newCount = 0;
+            for (let i = 0; i < placemarks.length; i++) {
+                const name = placemarks[i].getElementsByTagName("name")[0]?.textContent.trim() || "Unnamed";
+                if (findItemByName(name)) continue;
+                const point = placemarks[i].getElementsByTagName("Point")[0];
+                const polygon = placemarks[i].getElementsByTagName("Polygon")[0];
+                let type = 'unknown', latlng = null;
+                if (point) {
+                    type = 'point';
+                    const coords = point.getElementsByTagName("coordinates")[0].textContent.trim().split(',');
+                    latlng = [parseFloat(coords[1]), parseFloat(coords[0])];
+                } else if (polygon) {
+                    type = 'polygon';
+                    const coordsRaw = polygon.getElementsByTagName("coordinates")[0].textContent.trim().split(/\s+/);
+                    latlng = coordsRaw.map(p => {
+                        const parts = p.split(',');
+                        if(parts.length >= 2) return [parseFloat(parts[1]), parseFloat(parts[0])];
+                    }).filter(p => p);
+                }
+                if (latlng) { appData['Selected'].push(createItem(name, type, latlng)); newCount++; }
+            }
+            alert(`${newCount} locations imported.`);
+            saveToStorage(); renderSidebar();
+        }
+
+        function parseGeoJSONImport(jsonText) {
+            const geoData = JSON.parse(jsonText);
+            const features = geoData.features || (geoData.type === 'Feature' ? [geoData] : []);
+            let newCount = 0;
+            features.forEach(f => {
+                const name = f.properties?.name || "Unnamed";
+                if (findItemByName(name)) return;
+                let type = 'unknown', latlng = null;
+                if (f.geometry.type === 'Point') {
+                    type = 'point'; latlng = [f.geometry.coordinates[1], f.geometry.coordinates[0]];
+                } else if (f.geometry.type === 'Polygon') {
+                    type = 'polygon'; latlng = f.geometry.coordinates[0].map(c => [c[1], c[0]]);
+                }
+                if (latlng) {
+                    const status = f.properties.status && appData[f.properties.status] ? f.properties.status : 'Selected';
+                    appData[status].push(createItem(name, type, latlng)); newCount++;
+                }
+            });
+            alert(`${newCount} locations imported.`);
+            saveToStorage(); renderSidebar();
+        }
+
+        function parseJSONBackup(jsonText) {
+            const parsed = JSON.parse(jsonText);
+            if (parsed.data && parsed.colors) {
+                if(confirm("Merge with current data?")) {
+                    Object.keys(parsed.data).forEach(key => {
+                        if(appData[key]) {
+                            parsed.data[key].forEach(newItem => {
+                                if(!findItemByName(newItem.name)) appData[key].push(newItem);
+                            });
+                        }
+                    });
+                    categoryColors = parsed.colors;
+                    alert("Data restored.");
+                    saveToStorage(); renderSidebar();
+                }
+            } else alert("Invalid Backup.");
+        }
+
+        function createItem(name, type, latlng) { return { id: Date.now() + Math.random().toString(36).substr(2, 9), name: name, type: type, latlng: latlng, visible: true }; }
+        function findItemByName(name) { return Object.keys(appData).some(key => appData[key].find(i => i.name === name)); }
+
+        // --- Export Logic ---
+        function openExportModal() { document.getElementById('export-modal').style.display = 'flex'; }
+        function exportData(format) {
             try {
-                if (currentImportType === 'kml') parseKML(content);
-                else if (currentImportType === 'geojson') parseGeoJSONImport(content);
-                else if (currentImportType === 'json') parseJSONBackup(content);
-            } catch (err) { alert("Error importing file: " + err.message); }
-            document.getElementById('file-input').value = '';
-        };
-        reader.readAsText(file);
-    }
-
-    function parseKML(xmlText) {
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-        const placemarks = xmlDoc.getElementsByTagName("Placemark");
-        let newCount = 0;
-        for (let i = 0; i < placemarks.length; i++) {
-            const name = placemarks[i].getElementsByTagName("name")[0]?.textContent.trim() || "Unnamed";
-            if (findItemByName(name)) continue;
-            const point = placemarks[i].getElementsByTagName("Point")[0];
-            const polygon = placemarks[i].getElementsByTagName("Polygon")[0];
-            let type = 'unknown', latlng = null;
-            if (point) {
-                type = 'point';
-                const coords = point.getElementsByTagName("coordinates")[0].textContent.trim().split(',');
-                latlng = [parseFloat(coords[1]), parseFloat(coords[0])];
-            } else if (polygon) {
-                type = 'polygon';
-                const coordsRaw = polygon.getElementsByTagName("coordinates")[0].textContent.trim().split(/\s+/);
-                latlng = coordsRaw.map(p => {
-                    const parts = p.split(',');
-                    if(parts.length >= 2) return [parseFloat(parts[1]), parseFloat(parts[0])];
-                }).filter(p => p);
-            }
-            if (latlng) {
-                appData['Selected'].push(createItem(name, type, latlng));
-                newCount++;
-            }
+                let content = '', filename = 'nethouse_project.' + format, mimeType = 'text/plain';
+                if (format === 'json') { content = JSON.stringify({ data: appData, colors: categoryColors }, null, 2); mimeType = 'application/json'; }
+                else if (format === 'geojson') { content = generateGeoJSON(); mimeType = 'application/json'; }
+                else if (format === 'kml') { content = generateKML(); mimeType = 'application/vnd.google-earth.kml+xml'; }
+                const blob = new Blob([content], { type: mimeType });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                closeModal('export-modal');
+            } catch (e) { alert('Error exporting: ' + e.message); }
         }
-        alert(`${newCount} locations imported.`);
-        saveToStorage();
-        renderSidebar();
-    }
 
-    function parseGeoJSONImport(jsonText) {
-        const geoData = JSON.parse(jsonText);
-        const features = geoData.features || (geoData.type === 'Feature' ? [geoData] : []);
-        let newCount = 0;
-        features.forEach(f => {
-            const name = f.properties?.name || "Unnamed";
-            if (findItemByName(name)) return;
-            let type = 'unknown', latlng = null;
-            if (f.geometry.type === 'Point') {
-                type = 'point'; latlng = [f.geometry.coordinates[1], f.geometry.coordinates[0]];
-            } else if (f.geometry.type === 'Polygon') {
-                type = 'polygon'; latlng = f.geometry.coordinates[0].map(c => [c[1], c[0]]);
-            }
-            if (latlng) {
-                const status = f.properties.status && appData[f.properties.status] ? f.properties.status : 'Selected';
-                appData[status].push(createItem(name, type, latlng));
-                newCount++;
-            }
-        });
-        alert(`${newCount} locations imported.`);
-        saveToStorage();
-        renderSidebar();
-    }
-
-    function parseJSONBackup(jsonText) {
-        const parsed = JSON.parse(jsonText);
-        if (parsed.data && parsed.colors) {
-            if(confirm("Merge with current data?")) {
-                Object.keys(parsed.data).forEach(key => {
-                    if(appData[key]) {
-                        parsed.data[key].forEach(newItem => {
-                            if(!findItemByName(newItem.name)) appData[key].push(newItem);
-                        });
-                    }
+        function generateGeoJSON() {
+            const features = [];
+            CATEGORY_KEYS.forEach(key => {
+                appData[key].forEach(item => {
+                    let coords = item.type === 'point' ? [item.latlng[1], item.latlng[0]] : [item.latlng.map(p => [p[1], p[0]])];
+                    features.push({ type: "Feature", properties: { name: item.name, status: key, color: categoryColors[key] }, geometry: { type: item.type === 'point' ? "Point" : "Polygon", coordinates: coords } });
                 });
-                categoryColors = parsed.colors;
-                alert("Data restored.");
-                saveToStorage();
-                renderSidebar();
-            }
-        } else alert("Invalid Backup.");
-    }
-
-    function createItem(name, type, latlng) { return { id: Date.now() + Math.random().toString(36).substr(2, 9), name: name, type: type, latlng: latlng, visible: true }; }
-    function findItemByName(name) { return Object.keys(appData).some(key => appData[key].find(i => i.name === name)); }
-
-    // --- Export Logic ---
-    function openExportModal() { document.getElementById('export-modal').style.display = 'flex'; }
-    function exportData(format) {
-        try {
-            let content = '', filename = 'nethouse_project.' + format, mimeType = 'text/plain';
-            if (format === 'json') { content = JSON.stringify({ data: appData, colors: categoryColors }, null, 2); mimeType = 'application/json'; }
-            else if (format === 'geojson') { content = generateGeoJSON(); mimeType = 'application/json'; }
-            else if (format === 'kml') { content = generateKML(); mimeType = 'application/vnd.google-earth.kml+xml'; }
-            const blob = new Blob([content], { type: mimeType });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = filename;
-            document.body.appendChild(link); link.click(); document.body.removeChild(link);
-            closeModal('export-modal');
-        } catch (e) { alert('Error exporting: ' + e.message); }
-    }
-
-    function generateGeoJSON() {
-        const features = [];
-        CATEGORY_KEYS.forEach(key => {
-            appData[key].forEach(item => {
-                let coords = item.type === 'point' ? [item.latlng[1], item.latlng[0]] : [item.latlng.map(p => [p[1], p[0]])];
-                features.push({ type: "Feature", properties: { name: item.name, status: key, color: categoryColors[key] }, geometry: { type: item.type === 'point' ? "Point" : "Polygon", coordinates: coords } });
             });
-        });
-        return JSON.stringify({ type: "FeatureCollection", features: features }, null, 2);
-    }
+            return JSON.stringify({ type: "FeatureCollection", features: features }, null, 2);
+        }
 
-    function generateKML() {
-        const hexToKml = (hex) => { const r = hex.substring(1,3), g = hex.substring(3,5), b = hex.substring(5,7); return `ff${b}${g}${r}`; };
-        let styles = '', placemarks = '';
-        CATEGORY_KEYS.forEach(key => {
-            const kmlColor = hexToKml(categoryColors[key]);
-            styles += `<Style id="style-${key}"><IconStyle><scale>1.1</scale><color>${kmlColor}</color></IconStyle><LineStyle><color>${kmlColor}</color><width>2</width></LineStyle><PolyStyle><color>7f${kmlColor.substring(2)}</color></PolyStyle></Style>`;
-            appData[key].forEach(item => {
-                let geom = item.type === 'point' ? `<Point><coordinates>${item.latlng[1]},${item.latlng[0]},0</coordinates></Point>` : `<Polygon><outerBoundaryIs><LinearRing><coordinates>${item.latlng.map(p => `${p[1]},${p[0]},0`).join(' ')}</coordinates></LinearRing></outerBoundaryIs></Polygon>`;
-                placemarks += `<Placemark><name>${item.name}</name><styleUrl>#style-${key}</styleUrl>${geom}</Placemark>`;
+        function generateKML() {
+            const hexToKml = (hex) => { const r = hex.substring(1,3), g = hex.substring(3,5), b = hex.substring(5,7); return `ff${b}${g}${r}`; };
+            let styles = '', placemarks = '';
+            CATEGORY_KEYS.forEach(key => {
+                const kmlColor = hexToKml(categoryColors[key]);
+                styles += `<Style id="style-${key}"><IconStyle><scale>1.1</scale><color>${kmlColor}</color></IconStyle><LineStyle><color>${kmlColor}</color><width>2</width></LineStyle><PolyStyle><color>7f${kmlColor.substring(2)}</color></PolyStyle></Style>`;
+                appData[key].forEach(item => {
+                    let geom = item.type === 'point' ? `<Point><coordinates>${item.latlng[1]},${item.latlng[0]},0</coordinates></Point>` : `<Polygon><outerBoundaryIs><LinearRing><coordinates>${item.latlng.map(p => `${p[1]},${p[0]},0`).join(' ')}</coordinates></LinearRing></outerBoundaryIs></Polygon>`;
+                    placemarks += `<Placemark><name>${item.name}</name><styleUrl>#style-${key}</styleUrl>${geom}</Placemark>`;
+                });
             });
-        });
-        return `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Net House Projects</name>${styles}${placemarks}</Document></kml>`;
-    }
+            return `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Net House Projects</name>${styles}${placemarks}</Document></kml>`;
+        }
 
-    // --- Sidebar & Map Logic ---
-    function renderSidebar() {
-        const container = document.getElementById('categories-container');
-        container.innerHTML = '';
-        CATEGORY_KEYS.forEach(key => {
-            const currentColor = categoryColors[key];
-            const groupDiv = document.createElement('div');
-            groupDiv.className = `category-group`;
-            const isAllChecked = appData[key].length > 0 && appData[key].every(i => i.visible);
-            
-            const header = document.createElement('div');
-            header.className = 'category-header';
-            header.style.borderLeftColor = currentColor;
-            header.innerHTML = `<div style="display:flex; align-items:center; gap:8px;"><div class="color-picker-trigger" style="background:${currentColor}" onclick="openColorPicker(event, '${key}')"></div><input type="checkbox" ${isAllChecked ? 'checked' : ''} onclick="toggleCategory('${key}', this.checked, event)"><span onclick="toggleCollapse('${key}')">${CATEGORY_LABELS[key]} (${appData[key].length})</span></div><span onclick="toggleCollapse('${key}')">▼</span>`;
+        // --- Rendering & Map Update ---
+        function renderSidebar() {
+            const container = document.getElementById('categories-container');
+            container.innerHTML = '';
+            CATEGORY_KEYS.forEach(key => {
+                const currentColor = categoryColors[key];
+                const groupDiv = document.createElement('div');
+                groupDiv.className = `category-group`;
+                const isAllChecked = appData[key].length > 0 && appData[key].every(i => i.visible);
+                
+                const header = document.createElement('div');
+                header.className = 'category-header';
+                header.style.borderLeftColor = currentColor;
+                header.innerHTML = `<div style="display:flex; align-items:center; gap:8px;"><div class="color-picker-trigger" style="background:${currentColor}" onclick="openColorPicker(event, '${key}')"></div><input type="checkbox" ${isAllChecked ? 'checked' : ''} onclick="toggleCategory('${key}', this.checked, event)"><span onclick="toggleCollapse('${key}')">${CATEGORY_LABELS[key]} (${appData[key].length})</span></div><span onclick="toggleCollapse('${key}')">▼</span>`;
 
-            const ul = document.createElement('ul');
-            ul.className = 'item-list'; ul.id = `list-${key}`;
-            ul.addEventListener('dragover', e => { e.preventDefault(); ul.parentElement.classList.add('drag-over'); });
-            ul.addEventListener('dragleave', e => { ul.parentElement.classList.remove('drag-over'); });
-            ul.addEventListener('drop', e => { e.preventDefault(); ul.parentElement.classList.remove('drag-over'); handleDrop(key); });
+                const ul = document.createElement('ul');
+                ul.className = 'item-list'; ul.id = `list-${key}`;
+                ul.addEventListener('dragover', e => { e.preventDefault(); ul.parentElement.classList.add('drag-over'); });
+                ul.addEventListener('dragleave', e => { ul.parentElement.classList.remove('drag-over'); });
+                ul.addEventListener('drop', e => { e.preventDefault(); ul.parentElement.classList.remove('drag-over'); handleDrop(key); });
 
-            appData[key].forEach((item, index) => {
-                const li = document.createElement('li');
-                li.className = 'location-item'; li.draggable = true;
-                li.addEventListener('dragstart', (e) => { draggedItem = item; draggedSourceCategory = key; li.classList.add('dragging'); });
-                li.addEventListener('dragend', () => { li.classList.remove('dragging'); draggedItem = null; draggedSourceCategory = null; });
-                li.innerHTML = `<input type="checkbox" ${item.visible ? 'checked' : ''} onchange="toggleItem('${key}', ${index})"><span class="item-name" onclick="zoomToItem('${key}', ${index}); if(window.innerWidth <= 768) toggleSidebar();">${item.name}</span><button class="action-btn" onclick="openGlobalMenu(event, '${key}', ${index})">⋮</button>`;
-                ul.appendChild(li);
+                appData[key].forEach((item, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'location-item'; li.draggable = true;
+                    li.addEventListener('dragstart', (e) => { draggedItem = item; draggedSourceCategory = key; li.classList.add('dragging'); });
+                    li.addEventListener('dragend', () => { li.classList.remove('dragging'); draggedItem = null; draggedSourceCategory = null; });
+                    li.innerHTML = `<input type="checkbox" ${item.visible ? 'checked' : ''} onchange="toggleItem('${key}', ${index})"><span class="item-name" onclick="zoomToItem('${key}', ${index}); if(window.innerWidth <= 768) toggleSidebar();">${item.name}</span><button class="action-btn" onclick="openGlobalMenu(event, '${key}', ${index})">⋮</button>`;
+                    ul.appendChild(li);
+                });
+                groupDiv.appendChild(header); groupDiv.appendChild(ul); container.appendChild(groupDiv);
             });
-            groupDiv.appendChild(header); groupDiv.appendChild(ul); container.appendChild(groupDiv);
-        });
-    }
+        }
 
-    function openColorPicker(event, catKey) {
-        event.stopPropagation();
-        const picker = document.getElementById('global-color-picker');
-        picker.innerHTML = '';
-        AVAILABLE_COLORS.forEach(color => {
-            const div = document.createElement('div');
-            div.className = 'color-option'; div.style.backgroundColor = color;
-            div.onclick = () => { categoryColors[catKey] = color; picker.classList.remove('show'); saveToStorage(); renderSidebar(); };
-            picker.appendChild(div);
-        });
-        const rect = event.target.getBoundingClientRect();
-        picker.style.top = (rect.bottom + 5) + 'px'; picker.style.left = rect.left + 'px';
-        picker.classList.add('show');
-    }
-
-    function openGlobalMenu(event, sourceCat, index) {
-        event.stopPropagation();
-        const menu = document.getElementById('global-context-menu');
-        menu.innerHTML = '';
-        CATEGORY_KEYS.forEach(targetCat => {
-            if (targetCat !== sourceCat) {
-                const opt = document.createElement('div');
-                opt.className = 'menu-option'; opt.innerText = `Move to ${CATEGORY_LABELS[targetCat]}`;
-                opt.onclick = () => { moveItem(sourceCat, index, targetCat); menu.style.display = 'none'; };
-                menu.appendChild(opt);
-            }
-        });
-        const rect = event.target.getBoundingClientRect();
-        const menuHeight = 200; 
-        if (rect.bottom + menuHeight > window.innerHeight) menu.style.top = (rect.top - menuHeight) + 'px';
-        else menu.style.top = (rect.bottom + 5) + 'px';
-        menu.style.left = (rect.left - 100) + 'px';
-        menu.style.display = 'flex';
-    }
-
-    function moveItem(sourceCat, index, targetCat) {
-        const item = appData[sourceCat][index];
-        appData[sourceCat].splice(index, 1); appData[targetCat].push(item);
-        saveToStorage(); renderSidebar();
-    }
-
-    function toggleCollapse(catKey) { document.getElementById(`list-${catKey}`).classList.toggle('collapsed'); }
-    function toggleItem(catKey, index) { appData[catKey][index].visible = !appData[catKey][index].visible; saveToStorage(); }
-    function toggleCategory(catKey, status, event) { event.stopPropagation(); appData[catKey].forEach(item => item.visible = status); saveToStorage(); renderSidebar(); }
-    
-    function toggleLabels() {
-        isLabelsVisible = !isLabelsVisible;
-        const btn = document.getElementById('toggle-labels-btn');
-        if (isLabelsVisible) { document.getElementById('map').classList.remove('hide-labels'); btn.innerHTML = '👁️ Hide Labels'; btn.style.background = '#8e44ad'; }
-        else { document.getElementById('map').classList.add('hide-labels'); btn.innerHTML = '🚫 Show Labels'; btn.style.background = '#e74c3c'; }
-    }
-
-    function zoomToItem(catKey, index) {
-        const item = appData[catKey][index];
-        if (!item.visible) { item.visible = true; saveToStorage(); renderSidebar(); }
-        if (item.type === 'point') map.flyTo(item.latlng, 16);
-        else map.fitBounds(L.polygon(item.latlng).getBounds());
-        setTimeout(() => { markersLayer.eachLayer(layer => { if(layer._latlng && Math.abs(layer._latlng.lat - item.latlng[0]) < 0.00001) layer.openPopup(); }); }, 300);
-    }
-
-    function handleDrop(targetCategory) {
-        if (!draggedItem || !draggedSourceCategory || draggedSourceCategory === targetCategory) return;
-        appData[draggedSourceCategory] = appData[draggedSourceCategory].filter(i => i.id !== draggedItem.id);
-        appData[targetCategory].push(draggedItem);
-        saveToStorage(); renderSidebar();
-    }
-
-    function filterItems() {
-        const term = document.getElementById('search-input').value.toLowerCase();
-        document.querySelectorAll('.location-item').forEach(li => { li.style.display = li.querySelector('.item-name').innerText.toLowerCase().includes(term) ? 'flex' : 'none'; });
-    }
-
-    function updateMap() {
-        markersLayer.clearLayers();
-        CATEGORY_KEYS.forEach(key => {
-            const color = categoryColors[key];
-            appData[key].forEach(item => {
-                if (!item.visible) return;
-                let layer;
-                if (item.type === 'point') layer = L.circleMarker(item.latlng, { radius: 8, fillColor: color, color: '#fff', weight: 2, opacity: 1, fillOpacity: 0.8 });
-                else layer = L.polygon(item.latlng, { color: color });
-                layer.bindPopup(`<b>${item.name}</b><br>Status: ${CATEGORY_LABELS[key]}`);
-                layer.bindTooltip(item.name, { permanent: true, direction: 'top', className: 'map-label', offset: item.type === 'point' ? [0, -5] : [0, 0] });
-                markersLayer.addLayer(layer);
+        function openColorPicker(event, catKey) {
+            event.stopPropagation();
+            const picker = document.getElementById('global-color-picker');
+            picker.innerHTML = '';
+            AVAILABLE_COLORS.forEach(color => {
+                const div = document.createElement('div');
+                div.className = 'color-option'; div.style.backgroundColor = color;
+                div.onclick = () => { categoryColors[catKey] = color; picker.classList.remove('show'); saveToStorage(); renderSidebar(); };
+                picker.appendChild(div);
             });
-        });
-    }
-</script>
+            const rect = event.target.getBoundingClientRect();
+            picker.style.top = (rect.bottom + 5) + 'px'; picker.style.left = rect.left + 'px';
+            picker.classList.add('show');
+        }
+
+        function openGlobalMenu(event, sourceCat, index) {
+            event.stopPropagation();
+            const menu = document.getElementById('global-context-menu');
+            menu.innerHTML = '';
+            CATEGORY_KEYS.forEach(targetCat => {
+                if (targetCat !== sourceCat) {
+                    const opt = document.createElement('div');
+                    opt.className = 'menu-option'; opt.innerText = `Move to ${CATEGORY_LABELS[targetCat]}`;
+                    opt.onclick = () => { moveItem(sourceCat, index, targetCat); menu.style.display = 'none'; };
+                    menu.appendChild(opt);
+                }
+            });
+            const rect = event.target.getBoundingClientRect();
+            const menuHeight = 200; 
+            if (rect.bottom + menuHeight > window.innerHeight) menu.style.top = (rect.top - menuHeight) + 'px';
+            else menu.style.top = (rect.bottom + 5) + 'px';
+            menu.style.left = (rect.left - 100) + 'px';
+            menu.style.display = 'flex';
+        }
+
+        function moveItem(sourceCat, index, targetCat) {
+            const item = appData[sourceCat][index];
+            appData[sourceCat].splice(index, 1); appData[targetCat].push(item);
+            saveToStorage(); renderSidebar();
+        }
+
+        function toggleCollapse(catKey) { document.getElementById(`list-${catKey}`).classList.toggle('collapsed'); }
+        function toggleItem(catKey, index) { appData[catKey][index].visible = !appData[catKey][index].visible; saveToStorage(); }
+        function toggleCategory(catKey, status, event) { event.stopPropagation(); appData[catKey].forEach(item => item.visible = status); saveToStorage(); renderSidebar(); }
+        
+        function toggleLabels() {
+            isLabelsVisible = !isLabelsVisible;
+            const btn = document.getElementById('toggle-labels-btn');
+            if (isLabelsVisible) { document.getElementById('map').classList.remove('hide-labels'); btn.innerHTML = '👁️ Hide Labels'; btn.style.background = '#8e44ad'; }
+            else { document.getElementById('map').classList.add('hide-labels'); btn.innerHTML = '🚫 Show Labels'; btn.style.background = '#e74c3c'; }
+        }
+
+        function zoomToItem(catKey, index) {
+            const item = appData[catKey][index];
+            if (!item.visible) { item.visible = true; saveToStorage(); renderSidebar(); }
+            if (item.type === 'point') map.flyTo(item.latlng, 16);
+            else map.fitBounds(L.polygon(item.latlng).getBounds());
+            setTimeout(() => { markersLayer.eachLayer(layer => { if(layer._latlng && Math.abs(layer._latlng.lat - item.latlng[0]) < 0.00001) layer.openPopup(); }); }, 300);
+        }
+
+        function handleDrop(targetCategory) {
+            if (!draggedItem || !draggedSourceCategory || draggedSourceCategory === targetCategory) return;
+            appData[draggedSourceCategory] = appData[draggedSourceCategory].filter(i => i.id !== draggedItem.id);
+            appData[targetCategory].push(draggedItem);
+            saveToStorage(); renderSidebar();
+        }
+
+        function filterItems() {
+            const term = document.getElementById('search-input').value.toLowerCase();
+            document.querySelectorAll('.location-item').forEach(li => { li.style.display = li.querySelector('.item-name').innerText.toLowerCase().includes(term) ? 'flex' : 'none'; });
+        }
+
+        function updateMap() {
+            if (!map) return; // Guard in case called before map init
+            markersLayer.clearLayers();
+            CATEGORY_KEYS.forEach(key => {
+                const color = categoryColors[key];
+                appData[key].forEach(item => {
+                    if (!item.visible) return;
+                    let layer;
+                    if (item.type === 'point') layer = L.circleMarker(item.latlng, { radius: 8, fillColor: color, color: '#fff', weight: 2, opacity: 1, fillOpacity: 0.8 });
+                    else layer = L.polygon(item.latlng, { color: color });
+                    layer.bindPopup(`<b>${item.name}</b><br>Status: ${CATEGORY_LABELS[key]}`);
+                    layer.bindTooltip(item.name, { permanent: true, direction: 'top', className: 'map-label', offset: item.type === 'point' ? [0, -5] : [0, 0] });
+                    markersLayer.addLayer(layer);
+                });
+            });
+        }
+    </script>
 </body>
 </html>
